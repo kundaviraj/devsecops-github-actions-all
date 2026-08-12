@@ -1,34 +1,30 @@
 name: Build code, run unit test, run SAST, SCA, DAST security scans
-
-on:
-  push:
-    branches:
-      - master
-
-permissions:
-  contents: read
-  issues: write
+on: push
 
 jobs:
   build:
     runs-on: ubuntu-latest
     name: Run unit tests and SAST scan on the source code
     steps:
-      - name: Checkout Source Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up JDK 21
+      - name: Set up JDK 11
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
-          distribution: 'zulu'
+          java-version: '11'
+          distribution: 'temurin'
           cache: maven
 
+      # UI Step 1: Explicitly handles compilation and package creation
+      - name: Build with Maven cloud
+        run: mvn -B clean package
+
+      # UI Step 2: Explicitly handles code analysis and cloud upload
       - name: Run Sonar Analysis with cloud
         run: |
-          mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:5.0.0.4389:sonar \
-          -Dsonar.projectKey=${{ github.repository_owner }}_${{ github.event.repository.name }} \
-          -Dsonar.organization=${{ github.repository_owner }} \
+          mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:5.0.0.4389:sonar \
+          -Dsonar.projectKey=javaprojectreachability \
+          -Dsonar.organization=javaprojectreachability \
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.token=${{ secrets.SONAR_TOKEN }}
         env:
@@ -37,35 +33,30 @@ jobs:
 
   security:
     runs-on: ubuntu-latest
-    name: Run the SCA scan on the source code
     needs: build
+    name: Run the SCA scan on the source code
     steps:
-      - name: Checkout Source Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up JDK 21
+      - name: Set up JDK 11
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
-          distribution: 'zulu'
+          java-version: '11'
+          distribution: 'temurin'
           cache: maven
 
-      - name: Install Snyk CLI
-        uses: snyk/actions/setup@master
-
-      # The continue-on-error parameter logs the flaws but lets the pipeline progress
       - name: Run Snyk to check for vulnerabilities
-        run: snyk test --maven
+        uses: snyk/actions/maven@master
         continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
   zap_scan:
     runs-on: ubuntu-latest
-    name: Run DAST scan on the web application
     needs: security
+    name: Run DAST scan on the web application
     steps:
-      - name: Checkout Source Code
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: master
