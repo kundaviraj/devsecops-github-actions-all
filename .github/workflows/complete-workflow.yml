@@ -25,10 +25,9 @@ jobs:
           distribution: 'zulu'
           cache: maven
 
-      # Resolved execution using your updated pom.xml plugin properties
       - name: Run Sonar Analysis with cloud
         run: |
-          mvn -B verify sonar:sonar \
+          mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:5.0.0.4389:sonar \
             -Dsonar.projectKey=kundaviraj_devsecops-github-actions-all \
             -Dsonar.organization=kundaviraj \
             -Dsonar.host.url=https://sonarcloud.io \
@@ -37,10 +36,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
- security:
+  security:
     runs-on: ubuntu-latest
     name: Run the SCA scan on the source code
     needs: build
+    
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
@@ -52,9 +52,11 @@ jobs:
           distribution: 'zulu'
           cache: maven
 
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@master
+
       - name: Run Snyk to check for vulnerabilities
-        uses: snyk/actions/maven@master
-        continue-on-error: true
+        run: snyk test --maven
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
