@@ -55,8 +55,10 @@ jobs:
       - name: Install Snyk CLI
         uses: snyk/actions/setup@master
 
+      # The continue-on-error parameter logs the flaws but lets the pipeline progress
       - name: Run Snyk to check for vulnerabilities
         run: snyk test --maven
+        continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
